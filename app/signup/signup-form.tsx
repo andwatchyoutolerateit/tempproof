@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,25 @@ export function SignupForm() {
   const [confirmationEmail, setConfirmationEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
+
+  function friendlyAuthError(message: string, code?: string) {
+    if (code === "over_email_send_rate_limit" || /rate limit|security purposes/i.test(message)) {
+      return "Too many emails were requested. Please wait about an hour before trying again.";
+    }
+    if (/already registered|already exists/i.test(message)) {
+      return "If you already have an account, log in instead.";
+    }
+    return message;
+  }
 
   function confirmationRedirectUrl() {
     return `${window.location.origin}/auth/confirm`;
@@ -32,7 +51,7 @@ export function SignupForm() {
     });
 
     if (signupError) {
-      setError(signupError.message);
+      setError(friendlyAuthError(signupError.message, signupError.code));
       setSubmitting(false);
       return;
     }
@@ -44,6 +63,7 @@ export function SignupForm() {
     }
 
     setConfirmationEmail(email);
+    setResendCooldown(60);
     setSubmitting(false);
   }
 
@@ -59,10 +79,11 @@ export function SignupForm() {
     });
     setResending(false);
     if (resendError) {
-      setError(resendError.message);
+      setError(friendlyAuthError(resendError.message, resendError.code));
       return;
     }
-    setResendMessage("A new confirmation email has been sent.");
+    setResendCooldown(60);
+    setResendMessage("If this address still needs confirmation, a new email will arrive shortly.");
   }
 
   if (confirmationEmail) {
@@ -70,15 +91,15 @@ export function SignupForm() {
       <div className="confirmation-panel" aria-live="polite">
         <div className="confirmation-icon" aria-hidden="true">✉</div>
         <h2>Check your email</h2>
-        <p>We sent a confirmation link to <strong>{confirmationEmail}</strong>.</p>
+        <p>If this address is eligible for a new account, a confirmation link will arrive at <strong>{confirmationEmail}</strong>.</p>
         <p>Open the link to verify your account. You will then continue to business setup.</p>
         <p className="field-hint">The link may take a few minutes to arrive. Check your spam folder too.</p>
         {error && <div className="error-box" role="alert">{error}</div>}
         {resendMessage && <div className="success-box">{resendMessage}</div>}
-        <button className="secondary-button confirmation-resend" type="button" onClick={resendConfirmation} disabled={resending}>
-          {resending ? "Sending…" : "Resend confirmation email"}
+        <button className="secondary-button confirmation-resend" type="button" onClick={resendConfirmation} disabled={resending || resendCooldown > 0}>
+          {resending ? "Sending…" : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend confirmation email"}
         </button>
-        <p className="auth-switch"><Link href="/login">Back to log in</Link></p>
+        <p className="auth-switch">Already registered? <Link href="/login">Log in instead</Link></p>
       </div>
     );
   }
