@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export function SignupForm() {
@@ -10,6 +11,13 @@ export function SignupForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+
+  function confirmationRedirectUrl() {
+    return `${window.location.origin}/auth/confirm`;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,7 +25,11 @@ export function SignupForm() {
     setSubmitting(true);
 
     const supabase = createClient();
-    const { error: signupError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: confirmationRedirectUrl() },
+    });
 
     if (signupError) {
       setError(signupError.message);
@@ -25,8 +37,50 @@ export function SignupForm() {
       return;
     }
 
-    router.push("/onboarding");
-    router.refresh();
+    if (data.session) {
+      router.push("/onboarding");
+      router.refresh();
+      return;
+    }
+
+    setConfirmationEmail(email);
+    setSubmitting(false);
+  }
+
+  async function resendConfirmation() {
+    setError("");
+    setResendMessage("");
+    setResending(true);
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: confirmationEmail,
+      options: { emailRedirectTo: confirmationRedirectUrl() },
+    });
+    setResending(false);
+    if (resendError) {
+      setError(resendError.message);
+      return;
+    }
+    setResendMessage("A new confirmation email has been sent.");
+  }
+
+  if (confirmationEmail) {
+    return (
+      <div className="confirmation-panel" aria-live="polite">
+        <div className="confirmation-icon" aria-hidden="true">✉</div>
+        <h2>Check your email</h2>
+        <p>We sent a confirmation link to <strong>{confirmationEmail}</strong>.</p>
+        <p>Open the link to verify your account. You will then continue to business setup.</p>
+        <p className="field-hint">The link may take a few minutes to arrive. Check your spam folder too.</p>
+        {error && <div className="error-box" role="alert">{error}</div>}
+        {resendMessage && <div className="success-box">{resendMessage}</div>}
+        <button className="secondary-button confirmation-resend" type="button" onClick={resendConfirmation} disabled={resending}>
+          {resending ? "Sending…" : "Resend confirmation email"}
+        </button>
+        <p className="auth-switch"><Link href="/login">Back to log in</Link></p>
+      </div>
+    );
   }
 
   return (
