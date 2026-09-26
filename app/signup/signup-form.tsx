@@ -56,6 +56,12 @@ export function SignupForm() {
       return;
     }
 
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setError("An account with this email already exists. Log in or reset your password.");
+      setSubmitting(false);
+      return;
+    }
+
     if (data.session) {
       router.push("/onboarding");
       router.refresh();

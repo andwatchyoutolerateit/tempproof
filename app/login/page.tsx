@@ -9,9 +9,9 @@ const confirmationErrors: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; password?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, password } = await searchParams;
   return (
     <main className="auth-shell">
       <section className="auth-card">
@@ -19,6 +19,7 @@ export default async function LoginPage({
         <h1>Log in</h1>
         <p className="auth-intro">Open your temperature compliance dashboard.</p>
         {error && confirmationErrors[error] && <div className="error-box" role="alert">{confirmationErrors[error]}</div>}
+        {password === "updated" && <div className="success-box">Password updated. Log in with your new password.</div>}
         <LoginForm />
         <p className="auth-switch">New to TempProof? <Link href="/signup">Create an account</Link></p>
       </section>

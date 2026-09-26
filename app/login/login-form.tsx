@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -20,7 +21,11 @@ export function LoginForm() {
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (loginError) {
-      setError(loginError.message);
+      setError(
+        loginError.code === "invalid_credentials" || /invalid login credentials/i.test(loginError.message)
+          ? "Email or password is incorrect. If your email is confirmed, reset your password and try again."
+          : loginError.message,
+      );
       setSubmitting(false);
       return;
     }
@@ -35,6 +40,7 @@ export function LoginForm() {
       <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
       <label htmlFor="login-password">Password</label>
       <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+      <p className="form-assist"><Link href="/forgot-password">Forgot password?</Link></p>
       {error && <div className="error-box" role="alert">{error}</div>}
       <button className="primary-button" type="submit" disabled={submitting}>
         {submitting ? "Logging in…" : "Log in"}

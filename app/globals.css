@@ -118,6 +118,8 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .manager-form input { width: 100%; min-height: 50px; border: 2px solid var(--border); border-radius: 11px; padding: 10px 12px; background: white; color: var(--ink); }
 .manager-form input:focus { outline: 4px solid rgba(18,55,42,.16); border-color: var(--brand); }
 .field-hint { margin: 6px 0 0; font-size: 14px; }
+.form-assist { margin: 8px 0 0; text-align: right; }
+.form-assist a { color: var(--brand); font-weight: 700; }
 .confirmation-panel { text-align: center; }
 .confirmation-panel h2 { margin: 14px 0 8px; font-size: 28px; }
 .confirmation-panel > p { color: var(--muted); line-height: 1.5; }

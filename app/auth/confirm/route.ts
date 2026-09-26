@@ -4,12 +4,14 @@ import { createAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const errorCode = request.nextUrl.searchParams.get("error_code");
+  const requestedNext = request.nextUrl.searchParams.get("next");
+  const next = requestedNext === "/reset-password" ? "/reset-password" : "/onboarding";
   const origin = request.nextUrl.origin;
 
   if (code) {
     const supabase = await createAuthenticatedSupabaseClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}/onboarding`);
+    if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
 
   const reason = errorCode === "otp_expired" ? "confirmation-expired" : "confirmation-failed";
