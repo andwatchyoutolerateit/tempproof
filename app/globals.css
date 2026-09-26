@@ -25,6 +25,9 @@ body {
 
 button, input, textarea { font: inherit; }
 button { touch-action: manipulation; }
+.site-frame { min-height: calc(100dvh - 70px); }
+.site-footer { min-height: 70px; display: flex; justify-content: center; align-items: center; gap: 24px; padding: 18px; border-top: 1px solid var(--border); background: white; }
+.site-footer a { color: var(--brand); font-weight: 700; }
 
 .page-shell {
   min-height: 100dvh;
@@ -76,6 +79,7 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .primary-button { margin-top: 20px; border: 0; color: white; background: var(--brand); font-size: 19px; }
 .primary-button:active { background: var(--brand-pressed); }
 .primary-button:disabled { opacity: .6; cursor: wait; }
+.secondary-button:disabled, .danger-button:disabled, .text-button:disabled { opacity: .6; cursor: wait; }
 
 .success-view { min-height: 390px; display: grid; place-content: center; text-align: center; }
 .checkmark { width: 108px; height: 108px; margin: 0 auto 22px; border-radius: 999px; display: grid; place-items: center; color: white; background: var(--success); font-size: 66px; font-weight: 900; }
@@ -126,9 +130,13 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .confirmation-icon { width: 64px; height: 64px; display: grid; place-items: center; margin: 22px auto 0; border-radius: 999px; background: #e7f3ec; color: var(--brand); font-size: 30px; }
 .confirmation-resend { width: 100%; margin-top: 18px; }
 .success-box { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: #e7f5ed; color: var(--success); font-weight: 700; }
+.primary-link-button { display: block; margin-top: 20px; padding: 16px 18px; border-radius: 13px; color: white; background: var(--brand); font-size: 17px; font-weight: 800; text-align: center; text-decoration: none; }
 
 .dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
 .dashboard-header h1 { margin-bottom: 0; }
+.logout-wrap { display: grid; justify-items: end; gap: 6px; }
+.text-button { border: 0; background: transparent; color: var(--brand); font-weight: 800; text-decoration: underline; cursor: pointer; }
+.inline-error { max-width: 260px; color: var(--danger); font-size: 13px; text-align: right; }
 .dashboard-card + .dashboard-card { margin-top: 20px; }
 .dashboard-card h2 { margin: 0 0 18px; font-size: 25px; }
 .location-list { display: grid; gap: 10px; }
@@ -145,6 +153,14 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .location-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .full-field { grid-column: 1 / -1; }
 
+.legal-shell { max-width: 820px; margin: 0 auto; padding: 40px 20px; }
+.legal-card { background: white; border: 1px solid var(--border); border-radius: 18px; padding: clamp(24px, 5vw, 48px); box-shadow: 0 10px 30px rgba(18,55,42,.06); }
+.legal-card h1 { margin-bottom: 24px; }
+.legal-card h2 { margin: 30px 0 10px; font-size: 21px; }
+.legal-card p, .legal-card li { line-height: 1.65; }
+.legal-card ul { padding-left: 22px; }
+.legal-note { margin-top: 32px; padding: 16px; border-radius: 12px; background: #fff7d6; color: #604500; font-weight: 700; }
+
 @media (max-width: 600px) {
   .home-actions, .location-row { flex-direction: column; }
   .home-login, .home-start { width: 100%; }
@@ -152,4 +168,5 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
   .full-field { grid-column: auto; }
   .location-status { text-align: left; }
   .auth-card { padding: 22px; }
+  .dashboard-header { align-items: flex-start; }
 }

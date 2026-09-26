@@ -44,16 +44,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Corrective action must be 500 characters or fewer." }, { status: 422 });
   }
 
-  const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.rpc("submit_temperature_log", {
-    qr_token: token,
-    measured_temperature_c: temperature,
-    action_taken: correctiveAction,
-    idempotency_key: idempotencyKey,
-  });
-  if (error) {
-    const friendly = friendlyDatabaseError(error.message);
-    return NextResponse.json({ message: friendly.message }, { status: friendly.status });
+  let data: unknown;
+  try {
+    const supabase = createPublicSupabaseClient();
+    const result = await supabase.rpc("submit_temperature_log", {
+      qr_token: token,
+      measured_temperature_c: temperature,
+      action_taken: correctiveAction,
+      idempotency_key: idempotencyKey,
+    });
+    if (result.error) {
+      const friendly = friendlyDatabaseError(result.error.message);
+      return NextResponse.json({ message: friendly.message }, { status: friendly.status });
+    }
+    data = result.data;
+  } catch {
+    return NextResponse.json({ message: "TempProof could not reach the log right now. Your reading can be saved locally and retried." }, { status: 503 });
   }
 
   const row = Array.isArray(data) ? data[0] : null;

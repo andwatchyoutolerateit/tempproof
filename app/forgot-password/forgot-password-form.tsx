@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { requestPasswordResetAction } from "@/app/auth/actions";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -13,21 +13,18 @@ export function ForgotPasswordForm() {
     event.preventDefault();
     setError("");
     setSubmitting(true);
-
-    const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/confirm?next=/reset-password`;
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-
-    setSubmitting(false);
-    if (resetError) {
-      setError(
-        resetError.code === "over_email_send_rate_limit" || /rate limit|security purposes/i.test(resetError.message)
-          ? "Too many emails were requested. Please wait about an hour before trying again."
-          : resetError.message,
-      );
-      return;
+    try {
+      const result = await requestPasswordResetAction(email);
+      if (result.status === "error") {
+        setError(result.message ?? "We could not request a reset email right now.");
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("We could not reach the authentication service. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setSent(true);
   }
 
   if (sent) {
@@ -44,7 +41,7 @@ export function ForgotPasswordForm() {
   return (
     <form className="manager-form" onSubmit={handleSubmit}>
       <label htmlFor="reset-email">Email</label>
-      <input id="reset-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+      <input id="reset-email" type="email" autoComplete="email" maxLength={254} required value={email} onChange={(event) => setEmail(event.target.value)} />
       {error && <div className="error-box" role="alert">{error}</div>}
       <button className="primary-button" type="submit" disabled={submitting}>
         {submitting ? "Sending…" : "Send reset link"}

@@ -6,9 +6,15 @@ import { ResetPasswordForm } from "./reset-password-form";
 export const dynamic = "force-dynamic";
 
 export default async function ResetPasswordPage() {
-  const supabase = await createAuthenticatedSupabaseClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) redirect("/login?error=confirmation-failed");
+  let authenticated = false;
+  try {
+    const supabase = await createAuthenticatedSupabaseClient();
+    const { data, error } = await supabase.auth.getUser();
+    authenticated = !error && Boolean(data.user);
+  } catch {
+    authenticated = false;
+  }
+  if (!authenticated) redirect("/auth/error?flow=recovery");
 
   return (
     <main className="auth-shell">

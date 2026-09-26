@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAuthenticatedSupabaseClient } from "@/lib/supabase/server";
+import { LogoutButton } from "@/components/logout-button";
+import { SubmitButton } from "@/components/submit-button";
 import { createLocation } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -18,57 +20,97 @@ type LatestLog = {
   is_out_of_range: boolean;
 };
 
+type DashboardData = {
+  business: { id: string; name: string } | null;
+  locations: Location[];
+  latestByLocation: Map<string, LatestLog>;
+  destination?: "/login" | "/onboarding";
+  loadError?: string;
+};
+
+async function loadDashboardData(): Promise<DashboardData> {
+  try {
+    const supabase = await createAuthenticatedSupabaseClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return { business: null, locations: [], latestByLocation: new Map(), destination: "/login" };
+    }
+
+    const { data: business, error: businessError } = await supabase
+      .from("businesses")
+      .select("id,name")
+      .eq("owner_user_id", authData.user.id)
+      .limit(1)
+      .maybeSingle();
+    if (businessError) {
+      return { business: null, locations: [], latestByLocation: new Map(), loadError: "We could not load your business right now." };
+    }
+    if (!business) {
+      return { business: null, locations: [], latestByLocation: new Map(), destination: "/onboarding" };
+    }
+
+    const { data: locationRows, error: locationsError } = await supabase
+      .from("locations")
+      .select("id,name,min_temp_c,max_temp_c")
+      .eq("business_id", business.id)
+      .order("name");
+    if (locationsError) {
+      return { business, locations: [], latestByLocation: new Map(), loadError: "We could not load your locations right now." };
+    }
+
+    const locations = (locationRows ?? []) as Location[];
+    const latestByLocation = new Map<string, LatestLog>();
+    if (locations.length > 0) {
+      const { data: logs, error: logsError } = await supabase
+        .from("temperature_logs")
+        .select("location_id,logged_at,is_out_of_range")
+        .in("location_id", locations.map((location) => location.id))
+        .order("logged_at", { ascending: false });
+      if (logsError) {
+        return { business, locations, latestByLocation, loadError: "Locations loaded, but their latest readings are temporarily unavailable." };
+      }
+      for (const log of (logs ?? []) as LatestLog[]) {
+        if (!latestByLocation.has(log.location_id)) latestByLocation.set(log.location_id, log);
+      }
+    }
+
+    return { business, locations, latestByLocation };
+  } catch {
+    return { business: null, locations: [], latestByLocation: new Map(), loadError: "TempProof is temporarily unavailable. Please refresh and try again." };
+  }
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const supabase = await createAuthenticatedSupabaseClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect("/login");
-
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("id,name")
-    .eq("owner_user_id", authData.user.id)
-    .limit(1)
-    .maybeSingle();
-  if (!business) redirect("/onboarding");
-
-  const { data: locationRows, error: locationsError } = await supabase
-    .from("locations")
-    .select("id,name,min_temp_c,max_temp_c")
-    .eq("business_id", business.id)
-    .order("name");
-  const locations = (locationRows ?? []) as Location[];
-
-  const latestByLocation = new Map<string, LatestLog>();
-  if (locations.length > 0) {
-    const { data: logs } = await supabase
-      .from("temperature_logs")
-      .select("location_id,logged_at,is_out_of_range")
-      .in("location_id", locations.map((location) => location.id))
-      .order("logged_at", { ascending: false });
-    for (const log of (logs ?? []) as LatestLog[]) {
-      if (!latestByLocation.has(log.location_id)) latestByLocation.set(log.location_id, log);
-    }
-  }
+  const { business, locations, latestByLocation, destination, loadError } = await loadDashboardData();
+  if (destination) redirect(destination);
 
   const { error } = await searchParams;
-  const errorMessage = error === "invalid-location"
-    ? "Check the location name, temperature range, interval, and cutoff time."
-    : error;
+  const actionErrors: Record<string, string> = {
+    "invalid-location": "Check the location name, temperature range, interval, and cutoff time.",
+    "create-location-failed": "The location could not be created. Check your details and try again.",
+    "service-unavailable": "TempProof could not save the location right now. Please try again.",
+  };
+  const errorMessage = error ? actionErrors[error] ?? "The request could not be completed. Please try again." : "";
+
+  if (!business) {
+    return <main className="dashboard-shell"><div className="dashboard-card"><h1>Dashboard unavailable</h1><p>Please refresh and try again.</p></div></main>;
+  }
 
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
         <div><div className="brand">TempProof</div><h1>{business.name}</h1></div>
+        <LogoutButton />
       </header>
 
       <section className="dashboard-card">
         <h2>Locations</h2>
-        {locationsError && <div className="error-box" role="alert">{locationsError.message}</div>}
-        {!locationsError && locations.length === 0 && <p className="empty-state">No locations yet. Add your first one below.</p>}
+        {loadError && <div className="error-box" role="alert">{loadError}</div>}
+        {!loadError && locations.length === 0 && <p className="empty-state">No locations yet. Add your first one below.</p>}
         <div className="location-list">
           {locations.map((location) => {
             const latest = latestByLocation.get(location.id);
@@ -103,7 +145,7 @@ export default async function DashboardPage({
           <div><label htmlFor="interval">Check every (minutes)</label><input id="interval" name="check_interval_minutes" type="number" min="1" max="1440" step="1" defaultValue="240" required /></div>
           <div><label htmlFor="cutoff">Daily cutoff</label><input id="cutoff" name="daily_cutoff_time" type="time" defaultValue="23:59" required /></div>
           {errorMessage && <div className="error-box full-field" role="alert">{errorMessage}</div>}
-          <button className="primary-button full-field" type="submit">Add location</button>
+          <SubmitButton className="primary-button full-field" pendingLabel="Adding location…">Add location</SubmitButton>
         </form>
       </section>
     </main>

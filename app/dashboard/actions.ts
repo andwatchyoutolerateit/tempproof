@@ -18,28 +18,40 @@ export async function createLocation(formData: FormData) {
     && /^([01]\d|2[0-3]):[0-5]\d$/.test(cutoff);
   if (!valid) redirect("/dashboard?error=invalid-location");
 
-  const supabase = await createAuthenticatedSupabaseClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect("/login");
+  let destination = "/dashboard?error=service-unavailable";
+  try {
+    const supabase = await createAuthenticatedSupabaseClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      destination = "/login";
+    } else {
+      const { data: business, error: businessError } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_user_id", authData.user.id)
+        .limit(1)
+        .maybeSingle();
 
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("owner_user_id", authData.user.id)
-    .limit(1)
-    .maybeSingle();
-  if (!business) redirect("/onboarding");
+      if (businessError) {
+        destination = "/dashboard?error=service-unavailable";
+      } else if (!business) {
+        destination = "/onboarding";
+      } else {
+        const { error: insertError } = await supabase.from("locations").insert({
+          business_id: business.id,
+          name,
+          min_temp_c: minTemp,
+          max_temp_c: maxTemp,
+          check_interval_minutes: interval,
+          daily_cutoff_time: cutoff,
+        });
+        destination = insertError ? "/dashboard?error=create-location-failed" : "/dashboard";
+      }
+    }
+  } catch {
+    destination = "/dashboard?error=service-unavailable";
+  }
 
-  const { error } = await supabase.from("locations").insert({
-    business_id: business.id,
-    name,
-    min_temp_c: minTemp,
-    max_temp_c: maxTemp,
-    check_interval_minutes: interval,
-    daily_cutoff_time: cutoff,
-  });
-  if (error) redirect(`/dashboard?error=${encodeURIComponent(error.message)}`);
-
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  if (destination === "/dashboard") revalidatePath("/dashboard");
+  redirect(destination);
 }

@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { resendConfirmationAction, signUpAction } from "@/app/auth/actions";
 
 export function SignupForm() {
   const router = useRouter();
@@ -24,72 +24,48 @@ export function SignupForm() {
     return () => window.clearInterval(timer);
   }, [resendCooldown]);
 
-  function friendlyAuthError(message: string, code?: string) {
-    if (code === "over_email_send_rate_limit" || /rate limit|security purposes/i.test(message)) {
-      return "Too many emails were requested. Please wait about an hour before trying again.";
-    }
-    if (/already registered|already exists/i.test(message)) {
-      return "If you already have an account, log in instead.";
-    }
-    return message;
-  }
-
-  function confirmationRedirectUrl() {
-    return `${window.location.origin}/auth/confirm`;
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setSubmitting(true);
+    try {
+      const result = await signUpAction(email, password);
+      if (result.status === "error") {
+        setError(result.message ?? "We could not create the account right now.");
+        return;
+      }
+      if (result.status === "success") {
+        router.push("/onboarding");
+        router.refresh();
+        return;
+      }
 
-    const supabase = createClient();
-    const { data, error: signupError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: confirmationRedirectUrl() },
-    });
-
-    if (signupError) {
-      setError(friendlyAuthError(signupError.message, signupError.code));
+      setConfirmationEmail(email);
+      setResendCooldown(60);
+    } catch {
+      setError("We could not reach the authentication service. Please try again.");
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-      setError("An account with this email already exists. Log in or reset your password.");
-      setSubmitting(false);
-      return;
-    }
-
-    if (data.session) {
-      router.push("/onboarding");
-      router.refresh();
-      return;
-    }
-
-    setConfirmationEmail(email);
-    setResendCooldown(60);
-    setSubmitting(false);
   }
 
   async function resendConfirmation() {
     setError("");
     setResendMessage("");
     setResending(true);
-    const supabase = createClient();
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
-      email: confirmationEmail,
-      options: { emailRedirectTo: confirmationRedirectUrl() },
-    });
-    setResending(false);
-    if (resendError) {
-      setError(friendlyAuthError(resendError.message, resendError.code));
-      return;
+    try {
+      const result = await resendConfirmationAction(confirmationEmail);
+      if (result.status === "error") {
+        setError(result.message ?? "We could not request another email right now.");
+        return;
+      }
+      setResendCooldown(60);
+      setResendMessage("If this address still needs confirmation, a new email will arrive shortly.");
+    } catch {
+      setError("We could not reach the authentication service. Please try again.");
+    } finally {
+      setResending(false);
     }
-    setResendCooldown(60);
-    setResendMessage("If this address still needs confirmation, a new email will arrive shortly.");
   }
 
   if (confirmationEmail) {
@@ -97,7 +73,7 @@ export function SignupForm() {
       <div className="confirmation-panel" aria-live="polite">
         <div className="confirmation-icon" aria-hidden="true">✉</div>
         <h2>Check your email</h2>
-        <p>If this address is eligible for a new account, a confirmation link will arrive at <strong>{confirmationEmail}</strong>.</p>
+        <p>If an account can be created or still needs confirmation, instructions will arrive at <strong>{confirmationEmail}</strong>.</p>
         <p>Open the link to verify your account. You will then continue to business setup.</p>
         <p className="field-hint">The link may take a few minutes to arrive. Check your spam folder too.</p>
         {error && <div className="error-box" role="alert">{error}</div>}
@@ -113,9 +89,9 @@ export function SignupForm() {
   return (
     <form className="manager-form" onSubmit={handleSubmit}>
       <label htmlFor="signup-email">Email</label>
-      <input id="signup-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+      <input id="signup-email" type="email" autoComplete="email" maxLength={254} required value={email} onChange={(event) => setEmail(event.target.value)} />
       <label htmlFor="signup-password">Password</label>
-      <input id="signup-password" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} />
+      <input id="signup-password" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
       <p className="field-hint">Use at least 8 characters.</p>
       {error && <div className="error-box" role="alert">{error}</div>}
       <button className="primary-button" type="submit" disabled={submitting}>

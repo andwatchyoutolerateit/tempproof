@@ -16,11 +16,19 @@ export default async function LogTemperaturePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = createPublicSupabaseClient();
-  const { data, error } = await supabase.rpc("get_qr_location", { qr_token: token });
-  const location = !error && Array.isArray(data) ? (data[0] as QrLocation | undefined) : undefined;
+  let location: QrLocation | undefined;
+  let loadFailed = false;
 
-  if (error) {
+  try {
+    const supabase = createPublicSupabaseClient();
+    const { data, error } = await supabase.rpc("get_qr_location", { qr_token: token });
+    loadFailed = Boolean(error);
+    location = !error && Array.isArray(data) ? (data[0] as QrLocation | undefined) : undefined;
+  } catch {
+    loadFailed = true;
+  }
+
+  if (loadFailed) {
     return (
       <main className="page-shell">
         <section className="status-card" role="alert">

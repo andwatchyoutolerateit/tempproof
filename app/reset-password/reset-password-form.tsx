@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { updatePasswordAction } from "@/app/auth/actions";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -24,25 +24,27 @@ export function ResetPasswordForm() {
     }
 
     setSubmitting(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setSubmitting(false);
-    if (updateError) {
-      setError(updateError.message);
-      return;
+    try {
+      const result = await updatePasswordAction(password, confirmPassword);
+      if (result.status === "error") {
+        setError(result.message ?? "We could not update your password.");
+        return;
+      }
+      router.push("/login?password=updated");
+      router.refresh();
+    } catch {
+      setError("We could not reach the authentication service. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    await supabase.auth.signOut({ scope: "local" });
-    router.push("/login?password=updated");
-    router.refresh();
   }
 
   return (
     <form className="manager-form" onSubmit={handleSubmit}>
       <label htmlFor="new-password">New password</label>
-      <input id="new-password" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} />
+      <input id="new-password" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
       <label htmlFor="confirm-password">Confirm new password</label>
-      <input id="confirm-password" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+      <input id="confirm-password" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
       {error && <div className="error-box" role="alert">{error}</div>}
       <button className="primary-button" type="submit" disabled={submitting}>
         {submitting ? "Saving…" : "Save new password"}

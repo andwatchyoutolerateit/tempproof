@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
@@ -18,7 +19,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><ServiceWorkerRegister />{children}</body>
+      <body>
+        <ServiceWorkerRegister />
+        <div className="site-frame">{children}</div>
+        <footer className="site-footer">
+          <Link href="/impressum">Impressum</Link>
+          <Link href="/datenschutz">Datenschutz</Link>
+        </footer>
+      </body>
     </html>
   );
 }
