@@ -56,7 +56,7 @@ label { display: block; font-weight: 800; font-size: 17px; margin-bottom: 9px; }
 .temperature-input {
   width: 100%; height: 100%;
   min-height: 78px;
-  padding: 10px 58px 10px 18px;
+  padding: 10px 58px 10px 66px;
   border: 2px solid var(--border);
   border-radius: 14px;
   color: var(--ink);
@@ -64,6 +64,8 @@ label { display: block; font-weight: 800; font-size: 17px; margin-bottom: 9px; }
   font-size: 36px;
   font-weight: 800;
 }
+.sign-button { position: absolute; z-index: 1; left: 8px; top: 50%; width: 46px; min-height: 46px; transform: translateY(-50%); border: 0; border-radius: 10px; color: var(--brand); background: #e7f3ec; font-size: 25px; font-weight: 900; cursor: pointer; }
+.sign-button:active { color: white; background: var(--brand); }
 .stepper-button { min-width: 64px; min-height: 78px; border: 2px solid var(--brand); border-radius: 14px; color: var(--brand); background: white; font-size: 34px; font-weight: 800; cursor: pointer; }
 .stepper-button:active { color: white; background: var(--brand); }
 .temperature-input:focus, textarea:focus { outline: 4px solid rgba(18,55,42,.16); border-color: var(--brand); }
@@ -194,7 +196,7 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 @media (max-width: 390px) {
   .temperature-control { grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 7px; }
   .stepper-button { min-width: 52px; }
-  .temperature-input { padding-left: 12px; font-size: 31px; }
+  .temperature-input { padding-left: 62px; font-size: 31px; }
   .degree { right: 12px; }
 }
 
