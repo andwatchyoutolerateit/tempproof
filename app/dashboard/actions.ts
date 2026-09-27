@@ -37,21 +37,27 @@ export async function createLocation(formData: FormData) {
       } else if (!business) {
         destination = "/onboarding";
       } else {
-        const { error: insertError } = await supabase.from("locations").insert({
-          business_id: business.id,
-          name,
-          min_temp_c: minTemp,
-          max_temp_c: maxTemp,
-          check_interval_minutes: interval,
-          daily_cutoff_time: cutoff,
-        });
-        destination = insertError ? "/dashboard?error=create-location-failed" : "/dashboard";
+        const { data: location, error: insertError } = await supabase
+          .from("locations")
+          .insert({
+            business_id: business.id,
+            name,
+            min_temp_c: minTemp,
+            max_temp_c: maxTemp,
+            check_interval_minutes: interval,
+            daily_cutoff_time: cutoff,
+          })
+          .select("id")
+          .single();
+        destination = insertError || !location
+          ? "/dashboard?error=create-location-failed"
+          : `/dashboard/locations/${location.id}`;
       }
     }
   } catch {
     destination = "/dashboard?error=service-unavailable";
   }
 
-  if (destination === "/dashboard") revalidatePath("/dashboard");
+  if (destination.startsWith("/dashboard/locations/")) revalidatePath("/dashboard");
   redirect(destination);
 }

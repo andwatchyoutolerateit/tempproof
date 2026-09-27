@@ -14,9 +14,14 @@ type Props = {
 
 type Completion = { kind: "saved" | "queued"; time?: string } | null;
 
+function inputTemperature(value: number) {
+  return String(Math.round(value * 10) / 10);
+}
+
 export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, language }: Props) {
   const t = copy[language];
-  const [temperature, setTemperature] = useState("");
+  const midpoint = Math.round(((minTemp + maxTemp) / 2) * 10) / 10;
+  const [temperature, setTemperature] = useState(() => inputTemperature(midpoint));
   const [correctiveAction, setCorrectiveAction] = useState("");
   const [forceAction, setForceAction] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -40,17 +45,28 @@ export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, lang
     if (!completion) return;
     const timer = window.setTimeout(() => {
       setCompletion(null);
-      setTemperature("");
+      setTemperature(inputTemperature(midpoint));
       setCorrectiveAction("");
       setForceAction(false);
       setError("");
       inputRef.current?.focus();
     }, 3000);
     return () => window.clearTimeout(timer);
-  }, [completion]);
+  }, [completion, midpoint]);
+
+  function adjustTemperature(change: number) {
+    const current = Number(temperature.replace(",", "."));
+    const base = Number.isFinite(current) ? current : midpoint;
+    const next = Math.min(100, Math.max(-30, Math.round((base + change) * 10) / 10));
+    setTemperature(inputTemperature(next));
+    setForceAction(false);
+    setError("");
+    inputRef.current?.focus();
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     setError("");
     if (!validTemperature || parsed === null) {
       setError(t.invalidTemperature);
@@ -78,7 +94,7 @@ export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, lang
       return;
     }
     if (result.kind === "temporary") {
-      if (enqueue(entry)) setCompletion({ kind: "queued" });
+      if (enqueue(entry)) setCompletion({ kind: "queued", time: entry.createdAt });
       else setError(t.queueFull);
       return;
     }
@@ -97,46 +113,59 @@ export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, lang
       <section className="log-card success-view" aria-live="assertive">
         <div className="checkmark" aria-hidden="true">✓</div>
         <h2>{completion.kind === "saved" ? t.logged : t.localSaved}</h2>
-        <p>{completion.kind === "saved" ? `${t.loggedAt} ${localTime}` : t.localDetail}</p>
+        <p>{completion.kind === "saved" ? `${t.loggedAt} ${localTime}` : localTime}</p>
+        {completion.kind === "queued" && <small>{t.localDetail}</small>}
       </section>
     );
   }
 
   return (
     <section className="log-card">
-      <div className="brand">TempProof</div>
       <h1>{locationName}</h1>
       <p className="range">{t.acceptable}: <strong>{rangeLabel}</strong></p>
 
       <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="temperature">{t.temperature}</label>
-        <div className="temperature-wrap">
-          <input
-            ref={inputRef}
-            id="temperature"
-            className="temperature-input"
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            enterKeyHint="done"
-            value={temperature}
-            onChange={(event) => {
-              setTemperature(event.target.value);
-              setForceAction(false);
-              setError("");
-            }}
-            aria-describedby="temperature-help"
-            autoFocus
-          />
-          <span className="degree" aria-hidden="true">°C</span>
+        <label className="visually-hidden" htmlFor="temperature">{t.temperature}</label>
+        <div className="temperature-control">
+          <button className="stepper-button" type="button" onClick={() => adjustTemperature(-0.1)} aria-label="Decrease temperature by 0.1 degrees">
+            −
+          </button>
+          <div className="temperature-wrap">
+            <input
+              ref={inputRef}
+              id="temperature"
+              className="temperature-input"
+              type="number"
+              min="-30"
+              max="100"
+              step="0.1"
+              inputMode="decimal"
+              autoComplete="off"
+              enterKeyHint="done"
+              value={temperature}
+              onChange={(event) => {
+                setTemperature(event.target.value);
+                setForceAction(false);
+                setError("");
+              }}
+              aria-describedby="temperature-help"
+              autoFocus
+            />
+            <span className="degree" aria-hidden="true">°C</span>
+          </div>
+          <button className="stepper-button" type="button" onClick={() => adjustTemperature(0.1)} aria-label="Increase temperature by 0.1 degrees">
+            +
+          </button>
         </div>
-        <p id="temperature-help" className="hint">−30°C–100°C · 0.1°C</p>
+        <p id="temperature-help" className="visually-hidden">−30°C–100°C · 0.1°C</p>
 
         {needsAction && (
           <div className="action-panel">
             <label htmlFor="corrective-action">{t.actionTitle}</label>
-            <textarea
+            <input
               id="corrective-action"
+              className="corrective-action-input"
+              type="text"
               value={correctiveAction}
               maxLength={500}
               onChange={(event) => { setCorrectiveAction(event.target.value); setError(""); }}

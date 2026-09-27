@@ -25,6 +25,7 @@ body {
 
 button, input, textarea { font: inherit; }
 button { touch-action: manipulation; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .site-frame { min-height: calc(100dvh - 70px); }
 .site-footer { min-height: 70px; display: flex; justify-content: center; align-items: center; gap: 24px; padding: 18px; border-top: 1px solid var(--border); background: white; }
 .site-footer a { color: var(--brand); font-weight: 700; }
@@ -50,9 +51,10 @@ h1 { margin: 10px 0 8px; font-size: clamp(28px, 8vw, 40px); line-height: 1.05; }
 .range { margin: 0 0 26px; color: var(--muted); font-size: 18px; }
 label { display: block; font-weight: 800; font-size: 17px; margin-bottom: 9px; }
 
-.temperature-wrap { position: relative; }
+.temperature-control { display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; align-items: stretch; gap: 10px; }
+.temperature-wrap { position: relative; min-width: 0; }
 .temperature-input {
-  width: 100%;
+  width: 100%; height: 100%;
   min-height: 78px;
   padding: 10px 58px 10px 18px;
   border: 2px solid var(--border);
@@ -62,11 +64,15 @@ label { display: block; font-weight: 800; font-size: 17px; margin-bottom: 9px; }
   font-size: 36px;
   font-weight: 800;
 }
+.stepper-button { min-width: 64px; min-height: 78px; border: 2px solid var(--brand); border-radius: 14px; color: var(--brand); background: white; font-size: 34px; font-weight: 800; cursor: pointer; }
+.stepper-button:active { color: white; background: var(--brand); }
 .temperature-input:focus, textarea:focus { outline: 4px solid rgba(18,55,42,.16); border-color: var(--brand); }
 .degree { position: absolute; right: 18px; top: 24px; font-size: 25px; color: var(--muted); font-weight: 700; }
 
 .action-panel { margin-top: 20px; padding: 16px; border-radius: 14px; background: var(--danger-soft); border: 1px solid #efb9b4; }
 textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid var(--border); border-radius: 12px; padding: 13px; background: white; }
+.corrective-action-input { width: 100%; min-height: 52px; border: 2px solid var(--border); border-radius: 12px; padding: 12px 13px; background: white; }
+.corrective-action-input:focus { outline: 4px solid rgba(165,33,33,.12); border-color: var(--danger); }
 .hint, .warning { margin: 8px 0 0; font-size: 14px; line-height: 1.35; }
 .warning { color: #7a3b00; }
 .error-box, .offline-box { border-radius: 12px; padding: 12px 14px; margin-top: 16px; font-weight: 700; line-height: 1.35; }
@@ -85,6 +91,7 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .checkmark { width: 108px; height: 108px; margin: 0 auto 22px; border-radius: 999px; display: grid; place-items: center; color: white; background: var(--success); font-size: 66px; font-weight: 900; }
 .success-view h2 { margin: 0 0 10px; font-size: 38px; }
 .success-view p { margin: 0; color: var(--muted); font-size: 22px; font-weight: 700; }
+.success-view small { display: block; margin-top: 10px; color: var(--muted); font-size: 15px; }
 .status-card { margin-top: 14vh; text-align: center; }
 .status-card h1 { font-size: 30px; }
 .status-card p { color: var(--muted); font-size: 18px; line-height: 1.5; }
@@ -92,7 +99,7 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .dashboard-shell { max-width: 850px; margin: 0 auto; padding: 40px 20px; }
 .dashboard-card { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
 .button-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
-.button-row .secondary-button, .button-row .danger-button { width: auto; min-height: 48px; }
+.button-row .secondary-button, .button-row .danger-button { width: auto; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
 .secondary-button { color: var(--brand); background: white; border: 2px solid var(--brand); }
 .danger-button { color: var(--danger); background: white; border: 2px solid #d87070; }
 .button-message { margin-top: 14px; font-weight: 700; }
@@ -140,11 +147,17 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .dashboard-card + .dashboard-card { margin-top: 20px; }
 .dashboard-card h2 { margin: 0 0 18px; font-size: 25px; }
 .location-list { display: grid; gap: 10px; }
-.location-row { display: flex; justify-content: space-between; gap: 20px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; color: var(--ink); text-decoration: none; transition: border-color .15s, background .15s; }
+.location-row { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; color: var(--ink); transition: border-color .15s, background .15s; }
 .location-row:hover { border-color: var(--brand); background: #f8fbf9; }
+.location-row-main { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.location-main-link { color: var(--ink); text-decoration: none; }
+.location-main-link:hover strong { text-decoration: underline; }
 .location-row strong, .location-row span, .location-row time { display: block; }
-.location-row > div:first-child span, .location-status time { color: var(--muted); font-size: 14px; margin-top: 5px; }
+.location-main-link span, .location-status time { color: var(--muted); font-size: 14px; margin-top: 5px; }
 .location-status { text-align: right; }
+.location-qr-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
+.compact-button { width: auto; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; border-radius: 10px; font-size: 14px; text-decoration: none; }
+.location-action-message { flex-basis: 100%; margin: 2px 0 0; font-size: 14px; }
 .status-good, .status-danger, .status-neutral { font-weight: 800; }
 .status-good { color: var(--success); }
 .status-danger { color: var(--danger); }
@@ -152,6 +165,11 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .add-location-card { margin-bottom: 40px; }
 .location-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .full-field { grid-column: 1 / -1; }
+
+.qr-print-sheet { display: grid; justify-items: center; text-align: center; padding: 8px 0 2px; }
+.qr-preview-image { width: min(100%, 420px); height: auto; image-rendering: pixelated; }
+.qr-location-name { max-width: 100%; margin: 18px 0 6px; font-size: clamp(32px, 6vw, 48px); font-weight: 900; overflow-wrap: anywhere; }
+.qr-instruction { margin: 0 0 20px; color: var(--muted); font-size: 19px; }
 
 .legal-shell { max-width: 820px; margin: 0 auto; padding: 40px 20px; }
 .legal-card { background: white; border: 1px solid var(--border); border-radius: 18px; padding: clamp(24px, 5vw, 48px); box-shadow: 0 10px 30px rgba(18,55,42,.06); }
@@ -162,11 +180,33 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .legal-note { margin-top: 32px; padding: 16px; border-radius: 12px; background: #fff7d6; color: #604500; font-weight: 700; }
 
 @media (max-width: 600px) {
-  .home-actions, .location-row { flex-direction: column; }
+  .home-actions { flex-direction: column; }
   .home-login, .home-start { width: 100%; }
   .location-form { grid-template-columns: 1fr; }
   .full-field { grid-column: auto; }
+  .location-row-main { flex-direction: column; }
   .location-status { text-align: left; }
   .auth-card { padding: 22px; }
   .dashboard-header { align-items: flex-start; }
+  .location-qr-controls .compact-button { flex: 1 1 150px; }
+}
+
+@media (max-width: 390px) {
+  .temperature-control { grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 7px; }
+  .stepper-button { min-width: 52px; }
+  .temperature-input { padding-left: 12px; font-size: 31px; }
+  .degree { right: 12px; }
+}
+
+@media print {
+  @page { margin: 12mm; }
+  body { background: white; }
+  .site-frame { min-height: auto; }
+  .site-footer, .no-print { display: none !important; }
+  .dashboard-shell { max-width: none; margin: 0; padding: 0; }
+  .dashboard-card { border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+  .qr-print-sheet { min-height: 245mm; align-content: center; break-inside: avoid; }
+  .qr-preview-image { width: 10cm !important; height: 10cm !important; }
+  .qr-location-name { margin-top: 12mm; font-size: 30pt; }
+  .qr-instruction { color: #222; font-size: 16pt; }
 }

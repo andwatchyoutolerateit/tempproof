@@ -1,5 +1,8 @@
 import { QrActions } from "@/components/qr-actions";
 import Link from "next/link";
+import Image from "next/image";
+import QRCode from "qrcode";
+import { headers } from "next/headers";
 import { createAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +15,8 @@ export default async function LocationDetailPage({
 }) {
   const { locationId } = await params;
   let location: { id: string; name: string; min_temp_c: number | string; max_temp_c: number | string } | null = null;
+  let qrDataUrl = "";
+  let instruction = "Scan to log temperature";
   let loadFailed = false;
 
   if (UUID.test(locationId)) {
@@ -26,6 +31,41 @@ export default async function LocationDetailPage({
           .single();
         if (error && error.code !== "PGRST116") loadFailed = true;
         location = data;
+
+        if (location) {
+          const [qrResult, profileResult] = await Promise.all([
+            supabase
+              .from("qr_codes")
+              .select("token")
+              .eq("location_id", location.id)
+              .eq("is_active", true)
+              .single(),
+            supabase
+              .from("users")
+              .select("preferred_language")
+              .eq("id", authData.user.id)
+              .single(),
+          ]);
+          if (qrResult.error || !qrResult.data) {
+            loadFailed = true;
+          } else {
+            const requestHeaders = await headers();
+            const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+            const protocol = requestHeaders.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
+            const fallbackOrigin = host ? `${protocol}://${host}` : "http://localhost:3000";
+            const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || fallbackOrigin;
+            const logUrl = `${appOrigin}/log/${qrResult.data.token}`;
+            qrDataUrl = await QRCode.toDataURL(logUrl, {
+              errorCorrectionLevel: "H",
+              margin: 2,
+              width: 900,
+              color: { dark: "#111111", light: "#FFFFFF" },
+            });
+            instruction = profileResult.data?.preferred_language === "de"
+              ? "Scannen zur Temperaturerfassung"
+              : "Scan to log temperature";
+          }
+        }
       }
     } catch {
       loadFailed = true;
@@ -42,10 +82,24 @@ export default async function LocationDetailPage({
   return (
     <main className="dashboard-shell">
       <div className="dashboard-card">
-        <div className="brand">TempProof</div>
-        <p><Link href="/dashboard">← Back to dashboard</Link></p>
-        <h1>{location.name}</h1>
-        <p className="range">Acceptable range: <strong>{Number(location.min_temp_c)}°C to {Number(location.max_temp_c)}°C</strong></p>
+        <div className="no-print">
+          <div className="brand">TempProof</div>
+          <p><Link href="/dashboard">← Back to dashboard</Link></p>
+        </div>
+        <section className="qr-print-sheet">
+          <Image
+            className="qr-preview-image"
+            src={qrDataUrl}
+            alt={`QR code for ${location.name}`}
+            width={900}
+            height={900}
+            priority
+            unoptimized
+          />
+          <h1 className="qr-location-name">{location.name}</h1>
+          <p className="qr-instruction">{instruction}</p>
+        </section>
+        <p className="range no-print">Acceptable range: <strong>{Number(location.min_temp_c)}°C to {Number(location.max_temp_c)}°C</strong></p>
         <QrActions locationId={location.id} locationName={location.name} />
       </div>
     </main>

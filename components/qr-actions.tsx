@@ -1,8 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export function QrActions({ locationId, locationName }: { locationId: string; locationName: string }) {
+export function QrActions({
+  locationId,
+  locationName,
+  variant = "detail",
+}: {
+  locationId: string;
+  locationName: string;
+  variant?: "detail" | "list";
+}) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const pdfUrl = `/api/locations/${encodeURIComponent(locationId)}/qr.pdf`;
@@ -43,23 +53,40 @@ export function QrActions({ locationId, locationName }: { locationId: string; lo
       const response = await fetch(`/api/locations/${encodeURIComponent(locationId)}/rotate-qr`, { method: "POST" });
       const body = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) throw new Error(body.message ?? "Could not replace the QR code.");
-      setMessage("QR replaced. Preparing the new printable PDF…");
-      setBusy(false);
-      await downloadPdf();
+      setMessage("QR replaced. The old printed code is now inactive.");
+      router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not replace the QR code.");
+    } finally {
       setBusy(false);
     }
   }
 
+  if (variant === "list") {
+    return (
+      <div className="location-qr-controls">
+        <a className="secondary-button compact-button" href={pdfUrl} target="_blank" rel="noreferrer">
+          View QR code
+        </a>
+        <button className="danger-button compact-button" type="button" onClick={() => void replaceQr()} disabled={busy}>
+          {busy ? "Replacing…" : "Replace QR code"}
+        </button>
+        {message && <p className="button-message location-action-message" role="status">{message}</p>}
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="no-print">
       <div className="button-row">
         <button className="secondary-button" type="button" onClick={() => void downloadPdf()} disabled={busy}>
-          Print QR
+          {busy ? "Preparing…" : "Download PDF"}
+        </button>
+        <button className="secondary-button" type="button" onClick={() => window.print()} disabled={busy}>
+          Print
         </button>
         <button className="danger-button" type="button" onClick={() => void replaceQr()} disabled={busy}>
-          Replace QR code
+          {busy ? "Replacing…" : "Replace QR code"}
         </button>
       </div>
       {message && <p className="button-message" role="status">{message}</p>}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
+import { QrActions } from "@/components/qr-actions";
 import { SubmitButton } from "@/components/submit-button";
 import { createLocation } from "./actions";
 
@@ -115,22 +116,25 @@ export default async function DashboardPage({
           {locations.map((location) => {
             const latest = latestByLocation.get(location.id);
             return (
-              <Link className="location-row" href={`/dashboard/locations/${location.id}`} key={location.id}>
-                <div>
-                  <strong>{location.name}</strong>
-                  <span>{Number(location.min_temp_c)}°C to {Number(location.max_temp_c)}°C</span>
+              <article className="location-row" key={location.id}>
+                <div className="location-row-main">
+                  <Link className="location-main-link" href={`/dashboard/locations/${location.id}`}>
+                    <strong>{location.name}</strong>
+                    <span>{Number(location.min_temp_c)}°C to {Number(location.max_temp_c)}°C</span>
+                  </Link>
+                  <div className="location-status">
+                    {!latest ? <span className="status-neutral">No readings yet</span> : (
+                      <>
+                        <span className={latest.is_out_of_range ? "status-danger" : "status-good"}>
+                          {latest.is_out_of_range ? "Out of range" : "In range"}
+                        </span>
+                        <time dateTime={latest.logged_at}>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(latest.logged_at))}</time>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="location-status">
-                  {!latest ? <span className="status-neutral">No readings yet</span> : (
-                    <>
-                      <span className={latest.is_out_of_range ? "status-danger" : "status-good"}>
-                        {latest.is_out_of_range ? "Out of range" : "In range"}
-                      </span>
-                      <time dateTime={latest.logged_at}>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(latest.logged_at))}</time>
-                    </>
-                  )}
-                </div>
-              </Link>
+                <QrActions locationId={location.id} locationName={location.name} variant="list" />
+              </article>
             );
           })}
         </div>
