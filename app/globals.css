@@ -177,6 +177,7 @@ textarea { width: 100%; min-height: 104px; resize: vertical; border: 2px solid v
 .add-location-panel { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .24s ease, opacity .18s ease; }
 .add-location-card.is-expanded .add-location-panel { grid-template-rows: 1fr; opacity: 1; }
 .add-location-panel-inner { min-height: 0; overflow: hidden; }
+.add-location-card:not(.is-expanded) .add-location-panel-inner { visibility: hidden; }
 .location-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .add-location-panel .location-form { padding-top: 4px; }
 .full-field { grid-column: 1 / -1; }
