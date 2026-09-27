@@ -107,7 +107,7 @@ export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, lang
       return;
     }
 
-    if (/corrective action/i.test(result.message)) setForceAction(true);
+    if (/temperature is outside the current range/i.test(result.message)) setForceAction(true);
     setError(result.message);
   }
 
