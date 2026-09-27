@@ -64,6 +64,14 @@ export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, lang
     inputRef.current?.focus();
   }
 
+  function toggleTemperatureSign() {
+    const trimmed = temperature.trim();
+    setTemperature(trimmed === "" ? "-" : trimmed.startsWith("-") ? trimmed.slice(1) : `-${trimmed}`);
+    setForceAction(false);
+    setError("");
+    inputRef.current?.focus();
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (submitting) return;
@@ -131,14 +139,20 @@ export function TemperatureLogForm({ token, locationName, minTemp, maxTemp, lang
             −
           </button>
           <div className="temperature-wrap">
+            <button
+              className="sign-button"
+              type="button"
+              onClick={toggleTemperatureSign}
+              aria-label={language === "de" ? "Vorzeichen ändern" : "Change positive or negative sign"}
+              title={language === "de" ? "Vorzeichen ändern" : "Change sign"}
+            >
+              ±
+            </button>
             <input
               ref={inputRef}
               id="temperature"
               className="temperature-input"
-              type="number"
-              min="-30"
-              max="100"
-              step="0.1"
+              type="text"
               inputMode="decimal"
               autoComplete="off"
               enterKeyHint="done"
