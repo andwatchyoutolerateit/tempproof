@@ -2,7 +2,6 @@ import { QrActions } from "@/components/qr-actions";
 import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { headers } from "next/headers";
 import { createAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -49,12 +48,17 @@ export default async function LocationDetailPage({
           if (qrResult.error || !qrResult.data) {
             loadFailed = true;
           } else {
-            const requestHeaders = await headers();
-            const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-            const protocol = requestHeaders.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
-            const fallbackOrigin = host ? `${protocol}://${host}` : "http://localhost:3000";
-            const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || fallbackOrigin;
-            const logUrl = `${appOrigin}/log/${qrResult.data.token}`;
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+            if (!appUrl) throw new Error("NEXT_PUBLIC_APP_URL is required before a QR code can be generated.");
+            if (process.env.VERCEL_ENV === "production" && appUrl.toLowerCase().includes("localhost")) {
+              throw new Error("NEXT_PUBLIC_APP_URL must be the public production domain, not localhost.");
+            }
+            const parsedAppUrl = new URL(appUrl);
+            if (!/^https?:$/.test(parsedAppUrl.protocol) || parsedAppUrl.origin !== appUrl) {
+              throw new Error("NEXT_PUBLIC_APP_URL must be an origin with no path or trailing slash.");
+            }
+            const token = qrResult.data.token;
+            const logUrl = `${process.env.NEXT_PUBLIC_APP_URL}/log/${token}`;
             qrDataUrl = await QRCode.toDataURL(logUrl, {
               errorCorrectionLevel: "H",
               margin: 2,

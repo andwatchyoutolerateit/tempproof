@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { createAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export type AuthActionResult = {
@@ -37,17 +36,17 @@ function isExistingAccountError(code?: string, message?: string) {
   return code === "user_already_exists" || /already registered|already exists/i.test(message ?? "");
 }
 
-async function getRequestOrigin() {
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin");
-  if (origin && /^https?:\/\//i.test(origin)) return origin.replace(/\/$/, "");
-
-  const configured = process.env.NEXT_PUBLIC_APP_URL;
-  if (configured && /^https?:\/\//i.test(configured)) return configured.replace(/\/$/, "");
-
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
-  return host ? `${protocol}://${host}` : "http://localhost:3000";
+function getConfiguredAppOrigin() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!appUrl) throw new Error("NEXT_PUBLIC_APP_URL is required for authentication email links.");
+  if (process.env.VERCEL_ENV === "production" && appUrl.toLowerCase().includes("localhost")) {
+    throw new Error("NEXT_PUBLIC_APP_URL must be the public production domain, not localhost.");
+  }
+  const parsed = new URL(appUrl);
+  if (!/^https?:$/.test(parsed.protocol) || parsed.origin !== appUrl) {
+    throw new Error("NEXT_PUBLIC_APP_URL must be an origin with no path or trailing slash.");
+  }
+  return appUrl;
 }
 
 export async function signUpAction(emailValue: string, password: string): Promise<AuthActionResult> {
@@ -59,7 +58,7 @@ export async function signUpAction(emailValue: string, password: string): Promis
 
   try {
     const supabase = await createAuthenticatedSupabaseClient();
-    const origin = await getRequestOrigin();
+    const origin = getConfiguredAppOrigin();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -117,7 +116,7 @@ export async function resendConfirmationAction(emailValue: string): Promise<Auth
 
   try {
     const supabase = await createAuthenticatedSupabaseClient();
-    const origin = await getRequestOrigin();
+    const origin = getConfiguredAppOrigin();
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
@@ -139,7 +138,7 @@ export async function requestPasswordResetAction(emailValue: string): Promise<Au
 
   try {
     const supabase = await createAuthenticatedSupabaseClient();
-    const origin = await getRequestOrigin();
+    const origin = getConfiguredAppOrigin();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/auth/confirm?type=recovery&next=/reset-password`,
     });

@@ -12,10 +12,30 @@ function safeFilename(value: string) {
   return normalized || "temperature-unit";
 }
 
+function assertValidAppUrl() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!appUrl) {
+    throw new Error("NEXT_PUBLIC_APP_URL is required before a QR code can be generated.");
+  }
+  if (process.env.VERCEL_ENV === "production" && appUrl.toLowerCase().includes("localhost")) {
+    throw new Error("NEXT_PUBLIC_APP_URL must be the public production domain, not localhost.");
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(appUrl);
+  } catch {
+    throw new Error("NEXT_PUBLIC_APP_URL must be a valid absolute http(s) URL.");
+  }
+  if (!/^https?:$/.test(parsed.protocol) || parsed.origin !== appUrl) {
+    throw new Error("NEXT_PUBLIC_APP_URL must be an origin with no path or trailing slash.");
+  }
+}
+
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ locationId: string }> },
 ) {
+  assertValidAppUrl();
   const { locationId } = await params;
   if (!UUID.test(locationId)) return NextResponse.json({ message: "Location not found." }, { status: 404 });
 
@@ -39,8 +59,8 @@ export async function GET(
     const qr = qrResult.data;
     const profile = profileResult.data;
 
-    const appOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || new URL(request.url).origin;
-    const logUrl = `${appOrigin}/log/${qr.token}`;
+    const token = qr.token;
+    const logUrl = `${process.env.NEXT_PUBLIC_APP_URL}/log/${token}`;
     const qrDataUrl = await QRCode.toDataURL(logUrl, {
       errorCorrectionLevel: "H",
       margin: 2,
