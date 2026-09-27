@@ -51,13 +51,13 @@ export async function createLocation(formData: FormData) {
           .single();
         destination = insertError || !location
           ? "/dashboard?error=create-location-failed"
-          : `/dashboard/locations/${location.id}`;
+          : `/dashboard?added=${location.id}`;
       }
     }
   } catch {
     destination = "/dashboard?error=service-unavailable";
   }
 
-  if (destination.startsWith("/dashboard/locations/")) revalidatePath("/dashboard");
+  if (destination.startsWith("/dashboard?added=")) revalidatePath("/dashboard");
   redirect(destination);
 }
