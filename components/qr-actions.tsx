@@ -64,7 +64,7 @@ export function QrActions({
 
   if (variant === "list") {
     return (
-      <div className="location-qr-controls">
+      <div className="location-qr-controls" data-card-control onClick={(event) => event.stopPropagation()}>
         <a className="secondary-button compact-button" href={pdfUrl} target="_blank" rel="noreferrer">
           View QR code
         </a>
