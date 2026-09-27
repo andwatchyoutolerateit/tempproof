@@ -21,6 +21,15 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number) {
   return lines.length ? lines : [""];
 }
 
+function pdfSafe(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, "?");
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ locationId: string }> }) {
   try {
     const { locationId } = await params;
@@ -46,7 +55,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ loca
       y = 796;
       page.drawText("TempProof temperature log", { x: 42, y, size: 18, font: bold, color: rgb(0.07, 0.22, 0.16) });
       y -= 28;
-      page.drawText(`${business.name} - ${location.name}`, { x: 42, y, size: 14, font: bold });
+      page.drawText(pdfSafe(`${business.name} - ${location.name}`), { x: 42, y, size: 14, font: bold });
       y -= 20;
       page.drawText(`${range.label} | ${business.timezone} | Target ${Number(location.min_temp_c)} C to ${Number(location.max_temp_c)} C`, { x: 42, y, size: 9, font: regular, color: rgb(0.3, 0.34, 0.32) });
       y -= 25;
@@ -59,7 +68,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ loca
       page!.drawText("No readings in this date range.", { x: 42, y, size: 11, font: regular });
     }
     for (const log of logs) {
-      const actionLines = log.corrective_action ? wrapText(`Corrective action: ${log.corrective_action}`, regular, 9, 475) : [];
+      const actionLines = log.corrective_action ? wrapText(pdfSafe(`Corrective action: ${log.corrective_action}`), regular, 9, 475) : [];
       const rowHeight = 24 + actionLines.length * 12;
       if (y - rowHeight < 45) addPage();
       const status = log.is_out_of_range ? "OUT OF RANGE" : "In range";
