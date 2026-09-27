@@ -17,7 +17,7 @@ function friendlyDatabaseError(message: string) {
     return { status: 410, message: "This code is no longer active. Ask your manager for a new one." };
   }
   if (lower.includes("temperature") || lower.includes("numeric") || lower.includes("range")) {
-    return { status: 422, message: "The database rejected this reading. Check that it is within the Target range; if it is outside, add a corrective action and submit again." };
+    return { status: 503, message: "The temperature log is not configured correctly right now. Ask the manager to contact support." };
   }
   return { status: 503, message: "TempProof could not reach the log right now. Your reading can be saved locally and retried." };
 }
@@ -52,12 +52,28 @@ export async function POST(request: Request) {
   let data: unknown;
   try {
     const supabase = createPublicSupabaseClient();
-    const result = await supabase.rpc("submit_temperature_log", {
+    let result = await supabase.rpc("submit_temperature_log", {
       qr_token: token,
       measured_temperature_c: temperature,
       action_taken: correctiveAction,
       idempotency_key: idempotencyKey,
     });
+
+    // Some existing TempProof projects still have the original three-argument
+    // RPC. Keep logging available while the idempotency migration is applied.
+    const missingFourArgumentRpc =
+      Boolean(result.error) &&
+      (result.error?.code === "PGRST202" || result.error?.message.toLowerCase().includes("could not find the function")) &&
+      result.error?.message.toLowerCase().includes("idempotency_key");
+
+    if (missingFourArgumentRpc) {
+      result = await supabase.rpc("submit_temperature_log", {
+        qr_token: token,
+        measured_temperature_c: temperature,
+        action_taken: correctiveAction,
+      });
+    }
+
     if (result.error) {
       const friendly = friendlyDatabaseError(result.error.message);
       return NextResponse.json({ message: friendly.message }, { status: friendly.status });
