@@ -5,14 +5,19 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 function friendlyDatabaseError(message: string) {
   const lower = message.toLowerCase();
-  if (lower.includes("corrective action")) {
+  if (
+    lower.includes("corrective action") ||
+    lower.includes("out of range") ||
+    lower.includes("outside the") ||
+    lower.includes("outside current")
+  ) {
     return { status: 422, message: "This temperature is outside the current range. Add a corrective action and submit again." };
   }
   if (lower.includes("invalid or inactive qr") || lower.includes("location is unavailable")) {
     return { status: 410, message: "This code is no longer active. Ask your manager for a new one." };
   }
   if (lower.includes("temperature") || lower.includes("numeric") || lower.includes("range")) {
-    return { status: 422, message: "Check the temperature and try again." };
+    return { status: 422, message: "The database rejected this reading. Check that it is within the Target range; if it is outside, add a corrective action and submit again." };
   }
   return { status: 503, message: "TempProof could not reach the log right now. Your reading can be saved locally and retried." };
 }
